@@ -1,0 +1,95 @@
+# Changelog
+
+All notable changes to Peanut License Server will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [1.3.0] - 2025-12-26
+
+### Added
+- Modern React SPA frontend built with Vite
+- Dashboard with license statistics, quick actions, and recent activity
+- Licenses page with full CRUD operations, search, and filters
+- Analytics page with validation charts (Recharts), tier distribution, error analysis
+- Audit Trail page with searchable action logs
+- Webhooks management page with event subscriptions
+- Products page for plugin update management
+- GDPR Tools page for data export, anonymization, and deletion
+- Security page with IP blocking, rate limits, and security event monitoring
+- Settings page with API configuration and danger zone actions
+- Dark mode toggle (light/dark/system preferences)
+- Skeleton loading states for all pages
+- Tooltip components with viewport-aware positioning
+- Collapsible info banners matching Peanut Suite design
+- Danger zone components with confirmation dialogs
+
+### Tech Stack
+- React 19 + TypeScript
+- Vite 6 for build tooling
+- Tailwind CSS 4.0 for styling
+- React Query for data fetching
+- React Router for navigation
+- Recharts for analytics charts
+- Lucide for icons
+
+## [1.2.2] - 2025-12-21
+
+### Changed
+- Moved inline JavaScript from view files to admin.js for better maintainability
+- Moved inline CSS from view files to admin.css for consistency
+- Added CSS variables alignment with Peanut Suite design system
+- Added License Map, GDPR Tools, Analytics, and Settings page styles to external CSS
+
+### Fixed
+- Improved nonce handling for settings page file recheck functionality
+
+## [1.2.1] - 2025-12-21
+
+### Fixed
+- Fixed PHP 8.x deprecation warning for `add_submenu_page(null, ...)` by using empty string
+- Updated version numbering
+
+## [1.2.0] - 2025-12-20
+
+### Added
+- Dashboard page with overview stats and quick actions
+- License Map visual tree view
+- Info cards with dismissible help content
+- GDPR compliance tools (export, anonymize, delete)
+- Analytics page with charts and metrics
+- Action dropdown menus for license list
+- CSS variables for design system consistency
+
+### Changed
+- Redesigned admin UI with modern card-based layout
+- Improved responsive design for mobile devices
+- Enhanced table styling and status badges
+
+## [1.1.0] - 2025-12-15
+
+### Added
+- WooCommerce Subscriptions integration
+- Automatic license creation on subscription purchase
+- Webhook notifications for subscription events
+- Batch operations for bulk license management
+- Security event logging
+- Rate limiting for API protection
+
+### Changed
+- Improved license validation performance
+- Enhanced error handling and messages
+
+## [1.0.0] - 2025-12-01
+
+### Added
+- Initial release
+- License key generation and management
+- Three license tiers: Free, Pro, Agency
+- Site activation tracking
+- RESTful API for license validation
+- Plugin update server
+- Audit trail logging
+- Basic analytics
+- WooCommerce integration for license purchases
+- Client SDK for plugin integration

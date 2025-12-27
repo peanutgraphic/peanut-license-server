@@ -1,0 +1,608 @@
+<?php
+/**
+ * REST API Endpoints Class
+ *
+ * Registers and handles all REST API routes.
+ *
+ * @package Peanut_License_Server
+ */
+
+defined('ABSPATH') || exit;
+
+class Peanut_API_Endpoints {
+
+    /**
+     * API namespace
+     */
+    private const NAMESPACE = 'peanut-api/v1';
+
+    /**
+     * Register all routes
+     */
+    public function register_routes(): void {
+        // License validation and activation
+        register_rest_route(self::NAMESPACE, '/license/validate', [
+            'methods' => WP_REST_Server::CREATABLE,
+            'callback' => [$this, 'validate_license'],
+            'permission_callback' => '__return_true',
+            'args' => [
+                'license_key' => [
+                    'required' => true,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+                'site_url' => [
+                    'required' => true,
+                    'type' => 'string',
+                    'sanitize_callback' => 'esc_url_raw',
+                ],
+                'site_name' => [
+                    'required' => false,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+                'plugin_version' => [
+                    'required' => false,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+            ],
+        ]);
+
+        // License deactivation
+        register_rest_route(self::NAMESPACE, '/license/deactivate', [
+            'methods' => WP_REST_Server::CREATABLE,
+            'callback' => [$this, 'deactivate_license'],
+            'permission_callback' => '__return_true',
+            'args' => [
+                'license_key' => [
+                    'required' => true,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+                'site_url' => [
+                    'required' => true,
+                    'type' => 'string',
+                    'sanitize_callback' => 'esc_url_raw',
+                ],
+            ],
+        ]);
+
+        // License status check (no activation)
+        register_rest_route(self::NAMESPACE, '/license/status', [
+            'methods' => WP_REST_Server::READABLE,
+            'callback' => [$this, 'get_license_status'],
+            'permission_callback' => '__return_true',
+            'args' => [
+                'license_key' => [
+                    'required' => true,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+            ],
+        ]);
+
+        // Plugin update check
+        register_rest_route(self::NAMESPACE, '/updates/check', [
+            'methods' => WP_REST_Server::READABLE,
+            'callback' => [$this, 'check_update'],
+            'permission_callback' => '__return_true',
+            'args' => [
+                'plugin' => [
+                    'required' => false,
+                    'type' => 'string',
+                    'default' => 'peanut-suite',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+                'version' => [
+                    'required' => false,
+                    'type' => 'string',
+                    'default' => '0.0.0',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+                'license' => [
+                    'required' => false,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+                'site_url' => [
+                    'required' => false,
+                    'type' => 'string',
+                    'sanitize_callback' => 'esc_url_raw',
+                ],
+            ],
+        ]);
+
+        // Plugin info (for WordPress plugins_api)
+        register_rest_route(self::NAMESPACE, '/updates/info', [
+            'methods' => WP_REST_Server::READABLE,
+            'callback' => [$this, 'get_plugin_info'],
+            'permission_callback' => '__return_true',
+            'args' => [
+                'license' => [
+                    'required' => false,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+            ],
+        ]);
+
+        // Plugin download
+        register_rest_route(self::NAMESPACE, '/updates/download', [
+            'methods' => WP_REST_Server::READABLE,
+            'callback' => [$this, 'download_plugin'],
+            'permission_callback' => '__return_true',
+            'args' => [
+                'license' => [
+                    'required' => false,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+            ],
+        ]);
+
+        // Health check
+        register_rest_route(self::NAMESPACE, '/health', [
+            'methods' => WP_REST_Server::READABLE,
+            'callback' => [$this, 'health_check'],
+            'permission_callback' => '__return_true',
+        ]);
+
+        // Site health report (client sites report their status)
+        register_rest_route(self::NAMESPACE, '/site/health', [
+            'methods' => WP_REST_Server::CREATABLE,
+            'callback' => [$this, 'report_site_health'],
+            'permission_callback' => '__return_true',
+            'args' => [
+                'license_key' => [
+                    'required' => true,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+                'site_url' => [
+                    'required' => true,
+                    'type' => 'string',
+                    'sanitize_callback' => 'esc_url_raw',
+                ],
+                'plugin_version' => [
+                    'required' => true,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+                'wp_version' => [
+                    'required' => false,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+                'php_version' => [
+                    'required' => false,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+                'is_multisite' => [
+                    'required' => false,
+                    'type' => 'boolean',
+                ],
+                'active_plugins' => [
+                    'required' => false,
+                    'type' => 'integer',
+                ],
+                'health_status' => [
+                    'required' => false,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                    'default' => 'healthy',
+                ],
+                'errors' => [
+                    'required' => false,
+                    'type' => 'array',
+                ],
+            ],
+        ]);
+
+        // Get all activations for a license (for admin dashboard view)
+        register_rest_route(self::NAMESPACE, '/license/activations', [
+            'methods' => WP_REST_Server::READABLE,
+            'callback' => [$this, 'get_license_activations'],
+            'permission_callback' => '__return_true',
+            'args' => [
+                'license_key' => [
+                    'required' => true,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * Validate and activate license
+     */
+    public function validate_license(WP_REST_Request $request): WP_REST_Response {
+        // Check rate limit
+        $rate_limited = Peanut_Rate_Limiter::check('license_validate');
+        if ($rate_limited) {
+            return $rate_limited;
+        }
+
+        // Record request
+        Peanut_Rate_Limiter::record_request('license_validate');
+
+        $license_key = Peanut_License_Validator::sanitize_key($request->get_param('license_key'));
+        $site_url = $request->get_param('site_url');
+
+        if (!Peanut_License_Validator::is_valid_format($license_key)) {
+            // Log failed attempt
+            Peanut_Validation_Logger::log_failure(
+                $license_key,
+                $site_url,
+                'invalid_format',
+                'Invalid license key format',
+                'validate'
+            );
+
+            $response = new WP_REST_Response([
+                'success' => false,
+                'error' => 'invalid_format',
+                'message' => __('Invalid license key format.', 'peanut-license-server'),
+            ], 400);
+
+            return Peanut_Rate_Limiter::add_headers($response, 'license_validate');
+        }
+
+        $validator = new Peanut_License_Validator();
+        $result = $validator->validate_and_activate($license_key, [
+            'site_url' => $site_url,
+            'site_name' => $request->get_param('site_name'),
+            'plugin_version' => $request->get_param('plugin_version'),
+        ]);
+
+        // Log the attempt
+        if ($result['success']) {
+            Peanut_Validation_Logger::log_success($license_key, $site_url, 'validate');
+        } else {
+            Peanut_Validation_Logger::log_failure(
+                $license_key,
+                $site_url,
+                $result['error'] ?? 'unknown',
+                $result['message'] ?? 'Unknown error',
+                'validate'
+            );
+        }
+
+        $status = $result['success'] ? 200 : 400;
+        $response = new WP_REST_Response($result, $status);
+
+        return Peanut_Rate_Limiter::add_headers($response, 'license_validate');
+    }
+
+    /**
+     * Deactivate license from site
+     */
+    public function deactivate_license(WP_REST_Request $request): WP_REST_Response {
+        // Check rate limit
+        $rate_limited = Peanut_Rate_Limiter::check('license_validate');
+        if ($rate_limited) {
+            return $rate_limited;
+        }
+
+        Peanut_Rate_Limiter::record_request('license_validate');
+
+        $license_key = Peanut_License_Validator::sanitize_key($request->get_param('license_key'));
+        $site_url = $request->get_param('site_url');
+
+        if (!Peanut_License_Validator::is_valid_format($license_key)) {
+            Peanut_Validation_Logger::log_failure(
+                $license_key,
+                $site_url,
+                'invalid_format',
+                'Invalid license key format',
+                'deactivate'
+            );
+
+            $response = new WP_REST_Response([
+                'success' => false,
+                'error' => 'invalid_format',
+                'message' => __('Invalid license key format.', 'peanut-license-server'),
+            ], 400);
+
+            return Peanut_Rate_Limiter::add_headers($response, 'license_validate');
+        }
+
+        $validator = new Peanut_License_Validator();
+        $result = $validator->deactivate($license_key, $site_url);
+
+        // Log the attempt
+        if ($result['success']) {
+            Peanut_Validation_Logger::log_success($license_key, $site_url, 'deactivate');
+        } else {
+            Peanut_Validation_Logger::log_failure(
+                $license_key,
+                $site_url,
+                $result['error'] ?? 'unknown',
+                $result['message'] ?? 'Unknown error',
+                'deactivate'
+            );
+        }
+
+        $status = $result['success'] ? 200 : 400;
+        $response = new WP_REST_Response($result, $status);
+
+        return Peanut_Rate_Limiter::add_headers($response, 'license_validate');
+    }
+
+    /**
+     * Get license status without activation
+     */
+    public function get_license_status(WP_REST_Request $request): WP_REST_Response {
+        // Check rate limit
+        $rate_limited = Peanut_Rate_Limiter::check('license_status');
+        if ($rate_limited) {
+            return $rate_limited;
+        }
+
+        Peanut_Rate_Limiter::record_request('license_status');
+
+        $license_key = Peanut_License_Validator::sanitize_key($request->get_param('license_key'));
+
+        if (!Peanut_License_Validator::is_valid_format($license_key)) {
+            Peanut_Validation_Logger::log_failure(
+                $license_key,
+                '',
+                'invalid_format',
+                'Invalid license key format',
+                'status_check'
+            );
+
+            $response = new WP_REST_Response([
+                'success' => false,
+                'error' => 'invalid_format',
+                'message' => __('Invalid license key format.', 'peanut-license-server'),
+            ], 400);
+
+            return Peanut_Rate_Limiter::add_headers($response, 'license_status');
+        }
+
+        $validator = new Peanut_License_Validator();
+        $result = $validator->validate_only($license_key);
+
+        $status = $result['success'] ? 200 : 400;
+        $response = new WP_REST_Response($result, $status);
+
+        return Peanut_Rate_Limiter::add_headers($response, 'license_status');
+    }
+
+    /**
+     * Check for plugin updates
+     */
+    public function check_update(WP_REST_Request $request): WP_REST_Response {
+        // Check rate limit
+        $rate_limited = Peanut_Rate_Limiter::check('update_check');
+        if ($rate_limited) {
+            return $rate_limited;
+        }
+
+        Peanut_Rate_Limiter::record_request('update_check');
+
+        $plugin = $request->get_param('plugin');
+
+        // Validate plugin slug
+        if (!Peanut_Update_Server::is_valid_product($plugin)) {
+            $response = new WP_REST_Response([
+                'error' => 'invalid_plugin',
+                'message' => __('Unknown plugin.', 'peanut-license-server'),
+                'valid_plugins' => array_keys(Peanut_Update_Server::get_all_products()),
+            ], 400);
+
+            return Peanut_Rate_Limiter::add_headers($response, 'update_check');
+        }
+
+        $current_version = $request->get_param('version');
+        $license_key = $request->get_param('license');
+
+        $update_server = new Peanut_Update_Server($plugin);
+        $result = $update_server->check_update($current_version, $license_key);
+
+        $response = new WP_REST_Response($result, 200);
+
+        return Peanut_Rate_Limiter::add_headers($response, 'update_check');
+    }
+
+    /**
+     * Get full plugin info (for WordPress plugins_api)
+     */
+    public function get_plugin_info(WP_REST_Request $request): WP_REST_Response {
+        $plugin = $request->get_param('plugin') ?? 'peanut-suite';
+        $license_key = $request->get_param('license');
+
+        if (!Peanut_Update_Server::is_valid_product($plugin)) {
+            return new WP_REST_Response([
+                'error' => 'invalid_plugin',
+                'message' => __('Unknown plugin.', 'peanut-license-server'),
+            ], 400);
+        }
+
+        $update_server = new Peanut_Update_Server($plugin);
+        $info = $update_server->get_plugin_info($license_key);
+
+        return new WP_REST_Response($info, 200);
+    }
+
+    /**
+     * Download plugin ZIP
+     */
+    public function download_plugin(WP_REST_Request $request): void {
+        // Check rate limit for downloads
+        if (Peanut_Rate_Limiter::is_rate_limited('download')) {
+            status_header(429);
+            wp_die(__('Too many download requests. Please try again later.', 'peanut-license-server'), 429);
+        }
+
+        Peanut_Rate_Limiter::record_request('download');
+
+        $plugin = $request->get_param('plugin') ?? 'peanut-suite';
+        $license_key = $request->get_param('license');
+
+        if (!Peanut_Update_Server::is_valid_product($plugin)) {
+            wp_die(__('Unknown plugin.', 'peanut-license-server'), 400);
+        }
+
+        $update_server = new Peanut_Update_Server($plugin);
+        $update_server->serve_download($license_key);
+    }
+
+    /**
+     * Health check endpoint
+     */
+    public function health_check(): WP_REST_Response {
+        return new WP_REST_Response([
+            'status' => 'ok',
+            'version' => PEANUT_LICENSE_SERVER_VERSION,
+            'plugin_version' => get_option('peanut_license_server_plugin_version', '1.0.0'),
+            'timestamp' => current_time('c'),
+        ], 200);
+    }
+
+    /**
+     * Report site health from a client installation.
+     */
+    public function report_site_health(WP_REST_Request $request): WP_REST_Response {
+        global $wpdb;
+
+        $license_key = $request->get_param('license_key');
+        $site_url = $request->get_param('site_url');
+
+        // Validate the license key format first
+        if (!Peanut_License_Validator::is_valid_format($license_key)) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error' => 'invalid_format',
+                'message' => __('Invalid license key format.', 'peanut-license-server'),
+            ], 400);
+        }
+
+        // Get the license from the database
+        $license = Peanut_License_Manager::get_by_key($license_key);
+
+        if (!$license) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error' => 'invalid_license',
+                'message' => __('Invalid license key.', 'peanut-license-server'),
+            ], 400);
+        }
+
+        // Find the activation record.
+        $site_hash = md5($site_url);
+        $activation = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM {$wpdb->prefix}peanut_activations
+             WHERE license_id = %d AND site_hash = %s",
+            $license->id,
+            $site_hash
+        ));
+
+        if (!$activation) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error' => 'not_activated',
+                'message' => __('This site is not activated for this license.', 'peanut-license-server'),
+            ], 400);
+        }
+
+        // Update health data.
+        $health_data = [
+            'plugin_version' => $request->get_param('plugin_version') ?: '',
+            'wp_version' => $request->get_param('wp_version') ?: '',
+            'php_version' => $request->get_param('php_version') ?: '',
+            'is_multisite' => $request->get_param('is_multisite') ? 1 : 0,
+            'active_plugins' => absint($request->get_param('active_plugins')),
+            'health_status' => $request->get_param('health_status') ?: 'healthy',
+            'last_checked' => current_time('mysql'),
+        ];
+
+        // Store errors if any.
+        $errors = $request->get_param('errors');
+        if (!empty($errors) && is_array($errors)) {
+            $health_data['health_errors'] = wp_json_encode(array_slice($errors, 0, 10));
+            if (!empty($errors)) {
+                $health_data['health_status'] = 'warning';
+            }
+        }
+
+        $wpdb->update(
+            $wpdb->prefix . 'peanut_activations',
+            $health_data,
+            ['id' => $activation->id],
+            ['%s', '%s', '%s', '%d', '%d', '%s', '%s', '%s'],
+            ['%d']
+        );
+
+        return new WP_REST_Response([
+            'success' => true,
+            'message' => __('Health status updated.', 'peanut-license-server'),
+            'next_report' => current_time('timestamp') + DAY_IN_SECONDS,
+        ], 200);
+    }
+
+    /**
+     * Get all activations for a license.
+     */
+    public function get_license_activations(WP_REST_Request $request): WP_REST_Response {
+        global $wpdb;
+
+        $license_key = $request->get_param('license_key');
+
+        // Validate the license key format first
+        if (!Peanut_License_Validator::is_valid_format($license_key)) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error' => 'invalid_format',
+                'message' => __('Invalid license key format.', 'peanut-license-server'),
+            ], 400);
+        }
+
+        // Get the license from the database
+        $license = Peanut_License_Manager::get_by_key($license_key);
+
+        if (!$license) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error' => 'invalid_license',
+                'message' => __('Invalid license key.', 'peanut-license-server'),
+            ], 400);
+        }
+
+        // Get all activations.
+        $activations = $wpdb->get_results($wpdb->prepare(
+            "SELECT site_url, site_name, plugin_version, wp_version, php_version,
+                    health_status, activated_at, last_checked, is_active
+             FROM {$wpdb->prefix}peanut_activations
+             WHERE license_id = %d
+             ORDER BY activated_at DESC",
+            $license->id
+        ));
+
+        $active_count = 0;
+        foreach ($activations as $activation) {
+            if ($activation->is_active) {
+                $active_count++;
+            }
+        }
+
+        return new WP_REST_Response([
+            'success' => true,
+            'license' => [
+                'status' => $license->status,
+                'tier' => $license->tier,
+                'max_activations' => $license->max_activations,
+                'expires_at' => $license->expires_at,
+            ],
+            'activations' => [
+                'count' => $active_count,
+                'limit' => $license->max_activations,
+                'remaining' => max(0, $license->max_activations - $active_count),
+                'sites' => $activations,
+            ],
+        ], 200);
+    }
+}

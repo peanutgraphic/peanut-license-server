@@ -1,0 +1,9 @@
+export { default as Dashboard } from './Dashboard';
+export { default as Licenses } from './Licenses';
+export { default as Analytics } from './Analytics';
+export { default as Audit } from './Audit';
+export { default as Webhooks } from './Webhooks';
+export { default as Products } from './Products';
+export { default as GDPR } from './GDPR';
+export { default as Security } from './Security';
+export { default as Settings } from './Settings';
