@@ -739,7 +739,7 @@ final class Peanut_License_Server {
      * Render React app container
      */
     public function render_react_app(): void {
-        echo '<div id="peanut-license-root" class="peanut-fullscreen-app"></div>';
+        echo '<div id="root" class="peanut-fullscreen-app"></div>';
     }
 
     /**
