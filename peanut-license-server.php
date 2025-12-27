@@ -465,10 +465,21 @@ final class Peanut_License_Server {
      * Add admin menu
      */
     public function add_admin_menu(): void {
-        // Main menu - Dashboard
+        // React SPA - Main menu
+        add_menu_page(
+            __('License Server', 'peanut-license-server'),
+            __('License Server', 'peanut-license-server'),
+            'manage_options',
+            'peanut-license-app',
+            [$this, 'render_react_app'],
+            'dashicons-admin-network',
+            55
+        );
+
+        // Legacy menu - Dashboard
         add_menu_page(
             __('Peanut Licenses', 'peanut-license-server'),
-            __('Peanut Licenses', 'peanut-license-server'),
+            __('Licenses (Legacy)', 'peanut-license-server'),
             'manage_options',
             'peanut-dashboard',
             [Peanut_Admin_Dashboard::class, 'render_dashboard_page'],
@@ -621,6 +632,12 @@ final class Peanut_License_Server {
      * Enqueue admin assets
      */
     public function enqueue_admin_assets(?string $hook): void {
+        // Check if this is the React SPA page
+        if ($hook === 'toplevel_page_peanut-license-app') {
+            $this->enqueue_react_assets();
+            return;
+        }
+
         // Load on all Peanut License pages
         if (empty($hook) || strpos($hook, 'peanut-') === false) {
             return;
@@ -669,6 +686,60 @@ final class Peanut_License_Server {
                 'confirmDeactivate' => __('Are you sure you want to deactivate this site?', 'peanut-license-server'),
             ],
         ]);
+    }
+
+    /**
+     * Enqueue React SPA assets
+     */
+    private function enqueue_react_assets(): void {
+        $dist_path = PEANUT_LICENSE_SERVER_DIR . 'assets/dist/';
+        $dist_url = PEANUT_LICENSE_SERVER_URL . 'assets/dist/';
+
+        // Check if built assets exist
+        if (!file_exists($dist_path . 'js/main.js')) {
+            return;
+        }
+
+        // Enqueue the React app
+        wp_enqueue_script(
+            'peanut-license-react',
+            $dist_url . 'js/main.js',
+            [],
+            PEANUT_LICENSE_SERVER_VERSION,
+            true
+        );
+
+        // Add module type
+        add_filter('script_loader_tag', function($tag, $handle) {
+            if ($handle === 'peanut-license-react') {
+                $tag = str_replace('<script ', '<script type="module" ', $tag);
+            }
+            return $tag;
+        }, 10, 2);
+
+        // Enqueue CSS
+        if (file_exists($dist_path . 'css/main.css')) {
+            wp_enqueue_style(
+                'peanut-license-react-styles',
+                $dist_url . 'css/main.css',
+                [],
+                PEANUT_LICENSE_SERVER_VERSION
+            );
+        }
+
+        // Pass config to JavaScript
+        wp_localize_script('peanut-license-react', 'peanutLicenseServer', [
+            'apiUrl' => rest_url('peanut-api/v1'),
+            'nonce' => wp_create_nonce('wp_rest'),
+            'version' => PEANUT_LICENSE_SERVER_VERSION,
+        ]);
+    }
+
+    /**
+     * Render React app container
+     */
+    public function render_react_app(): void {
+        echo '<div id="peanut-license-root" class="peanut-fullscreen-app"></div>';
     }
 
     /**
