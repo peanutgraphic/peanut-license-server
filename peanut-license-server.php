@@ -3,7 +3,7 @@
  * Plugin Name: Peanut License Server
  * Plugin URI: https://peanutgraphic.com/peanut-suite
  * Description: License management, validation, and update server for Peanut Suite WordPress plugin.
- * Version: 1.3.0
+ * Version: 1.3.1
  * Author: Peanut Graphic
  * Author URI: https://peanutgraphic.com
  * License: GPL-2.0-or-later
@@ -17,7 +17,7 @@
 defined('ABSPATH') || exit;
 
 // Plugin constants
-define('PEANUT_LICENSE_SERVER_VERSION', '1.3.0');
+define('PEANUT_LICENSE_SERVER_VERSION', '1.3.1');
 define('PEANUT_LICENSE_SERVER_PATH', plugin_dir_path(__FILE__));
 define('PEANUT_LICENSE_SERVER_URL', plugin_dir_url(__FILE__));
 define('PEANUT_LICENSE_SERVER_BASENAME', plugin_basename(__FILE__));
@@ -352,7 +352,7 @@ final class Peanut_License_Server {
      * Initialize plugin
      */
     public function init(): void {
-        load_plugin_textdomain('peanut-license-server', false, dirname(PEANUT_LICENSE_SERVER_BASENAME) . '/languages');
+        // Textdomain is now loaded in main peanut_license_server() function
     }
 
     /**
@@ -794,10 +794,21 @@ final class Peanut_License_Server {
 
 /**
  * Initialize the plugin
+ *
+ * Uses 'init' hook instead of 'plugins_loaded' to ensure translations
+ * are properly loaded before any translation functions are called.
+ * WordPress 6.7+ enforces strict timing on textdomain loading.
  */
 function peanut_license_server(): Peanut_License_Server {
+    // Load textdomain first
+    load_plugin_textdomain(
+        'peanut-license-server',
+        false,
+        dirname(PEANUT_LICENSE_SERVER_BASENAME) . '/languages'
+    );
+
     return Peanut_License_Server::get_instance();
 }
 
 // Start the plugin
-add_action('plugins_loaded', 'peanut_license_server');
+add_action('init', 'peanut_license_server', 0);
