@@ -739,7 +739,24 @@ final class Peanut_License_Server {
      * Render React app container
      */
     public function render_react_app(): void {
-        echo '<div id="root" class="peanut-fullscreen-app"></div>';
+        // App container within WordPress admin
+        echo '<div id="root" class="wrap peanut-license-wrap"></div>';
+
+        // Style to fit within WP admin layout
+        echo '<style>
+            .peanut-license-wrap {
+                margin: 0 !important;
+                padding: 0 !important;
+                margin-left: -20px !important;
+                margin-right: -20px !important;
+                margin-top: -10px !important;
+                min-height: calc(100vh - 32px);
+                background: #f8fafc;
+            }
+            #wpbody-content {
+                padding-bottom: 0 !important;
+            }
+        </style>';
     }
 
     /**
