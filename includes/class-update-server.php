@@ -24,6 +24,14 @@ class Peanut_Update_Server {
             'homepage' => 'https://peanutgraphic.com/peanut-suite',
             'description' => 'Complete marketing toolkit - UTM campaigns, link management, lead tracking, and analytics.',
         ],
+        'peanut-connect' => [
+            'name' => 'Peanut Connect',
+            'slug' => 'peanut-connect',
+            'file' => 'peanut-connect/peanut-connect.php',
+            'author' => 'Peanut Graphic',
+            'homepage' => 'https://peanutgraphic.com/peanut-connect',
+            'description' => 'Remote site monitoring and management connector.',
+        ],
         'formflow' => [
             'name' => 'FormFlow',
             'slug' => 'formflow',
