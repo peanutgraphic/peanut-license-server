@@ -643,10 +643,20 @@ class Peanut_Admin_Dashboard {
 
                     $file = $_FILES['plugin_zip'];
 
-                    // Validate file type
+                    // Validate file extension
                     $file_type = wp_check_filetype($file['name']);
                     if ($file_type['ext'] !== 'zip') {
                         $message = __('Only ZIP files are allowed.', 'peanut-license-server');
+                        $message_type = 'error';
+                        break;
+                    }
+
+                    // Validate actual MIME type of file content for security
+                    $finfo = new \finfo(FILEINFO_MIME_TYPE);
+                    $actual_mime = $finfo->file($file['tmp_name']);
+                    $allowed_mimes = ['application/zip', 'application/x-zip-compressed', 'application/x-zip'];
+                    if (!in_array($actual_mime, $allowed_mimes, true)) {
+                        $message = __('File content does not match ZIP format.', 'peanut-license-server');
                         $message_type = 'error';
                         break;
                     }
