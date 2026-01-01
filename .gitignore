@@ -1,6 +1,14 @@
 # Dependencies
 frontend/node_modules/
 node_modules/
+vendor/
+
+# Lock files
+composer.lock
+frontend/package-lock.json
+
+# Testing
+.phpunit.cache/
 
 # Build output (keep dist for deployment)
 # assets/dist/
