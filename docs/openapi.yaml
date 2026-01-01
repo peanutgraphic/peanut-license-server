@@ -1,0 +1,781 @@
+openapi: 3.0.3
+info:
+  title: Peanut License Server API
+  description: |
+    REST API for license validation, activation, and management for Peanut WordPress plugins.
+
+    ## Authentication
+
+    **Public Endpoints** (`/peanut-api/v1/*`): No authentication required, but rate-limited and IP-blocked for abuse.
+
+    **Admin Endpoints** (`/peanut-admin/v1/*`): Requires WordPress admin authentication with `manage_options` capability.
+
+    ## Rate Limiting
+
+    All endpoints are rate-limited. Headers returned:
+    - `X-RateLimit-Limit`: Maximum requests per window
+    - `X-RateLimit-Remaining`: Remaining requests
+    - `X-RateLimit-Reset`: Unix timestamp when limit resets
+
+    ## Error Responses
+
+    All errors follow this format:
+    ```json
+    {
+      "success": false,
+      "error": "error_code",
+      "message": "Human readable message"
+    }
+    ```
+  version: 1.0.0
+  contact:
+    name: Peanut Graphic
+    url: https://peanutgraphic.com
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://peanutgraphic.com/wp-json
+    description: Production server
+
+tags:
+  - name: License
+    description: License validation and activation
+  - name: Updates
+    description: Plugin update checking and downloads
+  - name: Health
+    description: Health monitoring
+  - name: Admin Licenses
+    description: Admin license management
+  - name: Admin Analytics
+    description: Admin analytics and reporting
+
+paths:
+  /peanut-api/v1/license/validate:
+    post:
+      tags:
+        - License
+      summary: Validate and activate license
+      description: |
+        Validates a license key and activates it for the specified site.
+        If the license is already activated for this site, returns success without using another activation slot.
+      operationId: validateLicense
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - license_key
+                - site_url
+              properties:
+                license_key:
+                  type: string
+                  pattern: '^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$'
+                  example: ABCD-1234-EFGH-5678
+                site_url:
+                  type: string
+                  format: uri
+                  example: https://mysite.com
+                site_name:
+                  type: string
+                  example: My WordPress Site
+                plugin_version:
+                  type: string
+                  example: 4.2.0
+      responses:
+        '200':
+          description: License validated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LicenseValidationSuccess'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: License expired, revoked, or max activations reached
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /peanut-api/v1/license/deactivate:
+    post:
+      tags:
+        - License
+      summary: Deactivate license for site
+      description: Removes the activation for a specific site, freeing up the activation slot.
+      operationId: deactivateLicense
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - license_key
+                - site_url
+              properties:
+                license_key:
+                  type: string
+                  pattern: '^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$'
+                site_url:
+                  type: string
+                  format: uri
+      responses:
+        '200':
+          description: License deactivated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: License deactivated successfully
+        '400':
+          description: Invalid request
+        '404':
+          description: Activation not found
+
+  /peanut-api/v1/license/status:
+    get:
+      tags:
+        - License
+      summary: Check license status
+      description: Returns the current status of a license without activating it.
+      operationId: getLicenseStatus
+      parameters:
+        - name: license_key
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: License status returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LicenseStatus'
+        '404':
+          description: License not found
+
+  /peanut-api/v1/license/activations:
+    get:
+      tags:
+        - License
+      summary: Get license activations
+      description: Returns all sites where this license is currently activated.
+      operationId: getLicenseActivations
+      parameters:
+        - name: license_key
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Activations list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  activations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Activation'
+                  max_activations:
+                    type: integer
+                  remaining:
+                    type: integer
+
+  /peanut-api/v1/updates/check:
+    get:
+      tags:
+        - Updates
+      summary: Check for plugin updates
+      description: Checks if a newer version of the plugin is available.
+      operationId: checkUpdate
+      parameters:
+        - name: plugin
+          in: query
+          schema:
+            type: string
+            default: peanut-suite
+        - name: version
+          in: query
+          schema:
+            type: string
+            default: 0.0.0
+        - name: license
+          in: query
+          schema:
+            type: string
+        - name: site_url
+          in: query
+          schema:
+            type: string
+            format: uri
+      responses:
+        '200':
+          description: Update check result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateCheck'
+
+  /peanut-api/v1/updates/info:
+    get:
+      tags:
+        - Updates
+      summary: Get plugin information
+      description: Returns detailed plugin information for WordPress plugins_api.
+      operationId: getPluginInfo
+      parameters:
+        - name: license
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Plugin information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PluginInfo'
+
+  /peanut-api/v1/updates/download:
+    get:
+      tags:
+        - Updates
+      summary: Download plugin package
+      description: |
+        Downloads the plugin zip file. Requires a valid signed download token.
+        Token is generated by the server and included in update check responses.
+      operationId: downloadPlugin
+      parameters:
+        - name: license
+          in: query
+          schema:
+            type: string
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+            description: HMAC-signed download token
+        - name: plugin
+          in: query
+          schema:
+            type: string
+            default: peanut-suite
+      responses:
+        '200':
+          description: Plugin zip file
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        '403':
+          description: Invalid or expired token
+
+  /peanut-api/v1/health:
+    get:
+      tags:
+        - Health
+      summary: API health check
+      description: Returns the health status of the license server.
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /peanut-api/v1/site/health:
+    post:
+      tags:
+        - Health
+      summary: Report site health
+      description: Client sites report their health status for monitoring.
+      operationId: reportSiteHealth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - license_key
+                - site_url
+                - plugin_version
+              properties:
+                license_key:
+                  type: string
+                site_url:
+                  type: string
+                  format: uri
+                plugin_version:
+                  type: string
+                wp_version:
+                  type: string
+                php_version:
+                  type: string
+                is_multisite:
+                  type: boolean
+                active_plugins:
+                  type: integer
+                health_status:
+                  type: string
+                  enum: [healthy, warning, critical]
+                errors:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Health report received
+        '400':
+          description: Invalid request
+
+  /peanut-admin/v1/licenses:
+    get:
+      tags:
+        - Admin Licenses
+      summary: List all licenses
+      description: Returns paginated list of licenses.
+      operationId: listLicenses
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/per_page'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, expired, suspended, revoked]
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Licenses list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  licenses:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/License'
+                  total:
+                    type: integer
+                  pages:
+                    type: integer
+        '403':
+          description: Unauthorized
+
+    post:
+      tags:
+        - Admin Licenses
+      summary: Create a new license
+      operationId: createLicense
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LicenseCreate'
+      responses:
+        '201':
+          description: License created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/License'
+        '400':
+          description: Invalid request
+
+  /peanut-admin/v1/licenses/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags:
+        - Admin Licenses
+      summary: Get license details
+      operationId: getLicense
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: License details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/License'
+        '404':
+          description: License not found
+
+    put:
+      tags:
+        - Admin Licenses
+      summary: Update license
+      operationId: updateLicense
+      security:
+        - cookieAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LicenseUpdate'
+      responses:
+        '200':
+          description: License updated
+        '404':
+          description: License not found
+
+    delete:
+      tags:
+        - Admin Licenses
+      summary: Delete license
+      operationId: deleteLicense
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: License deleted
+        '404':
+          description: License not found
+
+  /peanut-admin/v1/licenses/{id}/suspend:
+    post:
+      tags:
+        - Admin Licenses
+      summary: Suspend license
+      operationId: suspendLicense
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: License suspended
+
+  /peanut-admin/v1/licenses/{id}/reactivate:
+    post:
+      tags:
+        - Admin Licenses
+      summary: Reactivate suspended license
+      operationId: reactivateLicense
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: License reactivated
+
+  /peanut-admin/v1/analytics/stats:
+    get:
+      tags:
+        - Admin Analytics
+      summary: Get analytics statistics
+      operationId: getAnalyticsStats
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [7d, 30d, 90d, 1y]
+            default: 30d
+      responses:
+        '200':
+          description: Analytics data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Analytics'
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: wordpress_logged_in
+      description: WordPress authentication cookie
+
+  parameters:
+    page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        default: 1
+    per_page:
+      name: per_page
+      in: query
+      schema:
+        type: integer
+        default: 20
+        maximum: 100
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: invalid_license
+        message:
+          type: string
+          example: The license key is invalid.
+
+    LicenseValidationSuccess:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        license:
+          type: object
+          properties:
+            status:
+              type: string
+              enum: [active, expired, suspended]
+            expires_at:
+              type: string
+              format: date
+              nullable: true
+            tier:
+              type: string
+              example: pro
+            features:
+              type: array
+              items:
+                type: string
+        activations:
+          type: object
+          properties:
+            current:
+              type: integer
+            max:
+              type: integer
+            remaining:
+              type: integer
+
+    LicenseStatus:
+      type: object
+      properties:
+        success:
+          type: boolean
+        status:
+          type: string
+          enum: [active, expired, suspended, revoked]
+        expires_at:
+          type: string
+          format: date
+          nullable: true
+        tier:
+          type: string
+
+    Activation:
+      type: object
+      properties:
+        id:
+          type: integer
+        site_url:
+          type: string
+        site_name:
+          type: string
+        activated_at:
+          type: string
+          format: date-time
+        last_checked:
+          type: string
+          format: date-time
+        plugin_version:
+          type: string
+
+    UpdateCheck:
+      type: object
+      properties:
+        update_available:
+          type: boolean
+        current_version:
+          type: string
+        new_version:
+          type: string
+        download_url:
+          type: string
+          format: uri
+        changelog:
+          type: string
+
+    PluginInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        version:
+          type: string
+        author:
+          type: string
+        requires:
+          type: string
+        tested:
+          type: string
+        requires_php:
+          type: string
+        sections:
+          type: object
+          properties:
+            description:
+              type: string
+            changelog:
+              type: string
+
+    License:
+      type: object
+      properties:
+        id:
+          type: integer
+        license_key:
+          type: string
+        customer_email:
+          type: string
+          format: email
+        customer_name:
+          type: string
+        status:
+          type: string
+          enum: [active, expired, suspended, revoked]
+        tier:
+          type: string
+        max_activations:
+          type: integer
+        current_activations:
+          type: integer
+        expires_at:
+          type: string
+          format: date
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    LicenseCreate:
+      type: object
+      required:
+        - customer_email
+        - tier
+      properties:
+        customer_email:
+          type: string
+          format: email
+        customer_name:
+          type: string
+        tier:
+          type: string
+          enum: [starter, pro, agency, lifetime]
+        max_activations:
+          type: integer
+          default: 1
+        expires_at:
+          type: string
+          format: date
+          nullable: true
+
+    LicenseUpdate:
+      type: object
+      properties:
+        customer_email:
+          type: string
+          format: email
+        customer_name:
+          type: string
+        status:
+          type: string
+          enum: [active, expired, suspended]
+        max_activations:
+          type: integer
+        expires_at:
+          type: string
+          format: date
+          nullable: true
+
+    Analytics:
+      type: object
+      properties:
+        total_licenses:
+          type: integer
+        active_licenses:
+          type: integer
+        total_activations:
+          type: integer
+        validations_today:
+          type: integer
+        validations_trend:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+              count:
+                type: integer
