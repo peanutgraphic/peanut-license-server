@@ -25,6 +25,9 @@ abstract class TestCase extends PHPUnitTestCase {
         $test_transients = [];
         $test_user_capabilities = ['manage_options' => true];
         $test_user_logged_in = true;
+
+        // Register WordPress function mocks
+        peanut_mock_wordpress_functions();
     }
 
     /**
