@@ -253,6 +253,7 @@ final class Peanut_License_Server {
         require_once PEANUT_LICENSE_SERVER_PATH . 'includes/class-license-manager.php';
         require_once PEANUT_LICENSE_SERVER_PATH . 'includes/class-license-validator.php';
         require_once PEANUT_LICENSE_SERVER_PATH . 'includes/class-update-server.php';
+        require_once PEANUT_LICENSE_SERVER_PATH . 'includes/class-api-security.php';
         require_once PEANUT_LICENSE_SERVER_PATH . 'includes/class-api-endpoints.php';
         require_once PEANUT_LICENSE_SERVER_PATH . 'includes/class-webhook-handler.php';
 

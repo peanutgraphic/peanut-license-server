@@ -24,7 +24,7 @@ class Peanut_API_Endpoints {
         register_rest_route(self::NAMESPACE, '/license/validate', [
             'methods' => WP_REST_Server::CREATABLE,
             'callback' => [$this, 'validate_license'],
-            'permission_callback' => '__return_true',
+            'permission_callback' => [Peanut_API_Security::class, 'permission_public_license'],
             'args' => [
                 'license_key' => [
                     'required' => true,
@@ -53,7 +53,7 @@ class Peanut_API_Endpoints {
         register_rest_route(self::NAMESPACE, '/license/deactivate', [
             'methods' => WP_REST_Server::CREATABLE,
             'callback' => [$this, 'deactivate_license'],
-            'permission_callback' => '__return_true',
+            'permission_callback' => [Peanut_API_Security::class, 'permission_public_license'],
             'args' => [
                 'license_key' => [
                     'required' => true,
@@ -72,7 +72,7 @@ class Peanut_API_Endpoints {
         register_rest_route(self::NAMESPACE, '/license/status', [
             'methods' => WP_REST_Server::READABLE,
             'callback' => [$this, 'get_license_status'],
-            'permission_callback' => '__return_true',
+            'permission_callback' => [Peanut_API_Security::class, 'permission_public_license'],
             'args' => [
                 'license_key' => [
                     'required' => true,
@@ -86,7 +86,7 @@ class Peanut_API_Endpoints {
         register_rest_route(self::NAMESPACE, '/updates/check', [
             'methods' => WP_REST_Server::READABLE,
             'callback' => [$this, 'check_update'],
-            'permission_callback' => '__return_true',
+            'permission_callback' => [Peanut_API_Security::class, 'permission_public_readonly'],
             'args' => [
                 'plugin' => [
                     'required' => false,
@@ -117,7 +117,7 @@ class Peanut_API_Endpoints {
         register_rest_route(self::NAMESPACE, '/updates/info', [
             'methods' => WP_REST_Server::READABLE,
             'callback' => [$this, 'get_plugin_info'],
-            'permission_callback' => '__return_true',
+            'permission_callback' => [Peanut_API_Security::class, 'permission_public_readonly'],
             'args' => [
                 'license' => [
                     'required' => false,
@@ -131,7 +131,7 @@ class Peanut_API_Endpoints {
         register_rest_route(self::NAMESPACE, '/updates/download', [
             'methods' => WP_REST_Server::READABLE,
             'callback' => [$this, 'download_plugin'],
-            'permission_callback' => '__return_true',
+            'permission_callback' => [Peanut_API_Security::class, 'permission_public_readonly'],
             'args' => [
                 'license' => [
                     'required' => false,
@@ -145,14 +145,14 @@ class Peanut_API_Endpoints {
         register_rest_route(self::NAMESPACE, '/health', [
             'methods' => WP_REST_Server::READABLE,
             'callback' => [$this, 'health_check'],
-            'permission_callback' => '__return_true',
+            'permission_callback' => [Peanut_API_Security::class, 'permission_public_readonly'],
         ]);
 
         // Site health report (client sites report their status)
         register_rest_route(self::NAMESPACE, '/site/health', [
             'methods' => WP_REST_Server::CREATABLE,
             'callback' => [$this, 'report_site_health'],
-            'permission_callback' => '__return_true',
+            'permission_callback' => [Peanut_API_Security::class, 'permission_public_license'],
             'args' => [
                 'license_key' => [
                     'required' => true,
@@ -204,7 +204,7 @@ class Peanut_API_Endpoints {
         register_rest_route(self::NAMESPACE, '/license/activations', [
             'methods' => WP_REST_Server::READABLE,
             'callback' => [$this, 'get_license_activations'],
-            'permission_callback' => '__return_true',
+            'permission_callback' => [Peanut_API_Security::class, 'permission_public_license'],
             'args' => [
                 'license_key' => [
                     'required' => true,
