@@ -25,19 +25,122 @@ define('PEANUT_LICENSE_SERVER_BASENAME', plugin_basename(__FILE__));
 /**
  * IMMEDIATE Download Handler - runs before anything else
  * This bypasses all WordPress processing to avoid 406 errors
+ *
+ * SECURITY: Requires signed token to prevent unauthorized downloads.
+ * Token format: HMAC-SHA256(plugin|timestamp|license, secret_key)
  */
 if (isset($_GET['peanut_download']) && $_GET['peanut_download'] === '1') {
     peanut_serve_plugin_download();
 }
 
-function peanut_serve_plugin_download(): void {
-    $plugin = isset($_GET['plugin']) ? sanitize_file_name($_GET['plugin']) : 'peanut-suite';
+/**
+ * Get the download signing secret.
+ * Falls back to AUTH_KEY if no dedicated secret is set.
+ *
+ * @return string The signing secret.
+ */
+function peanut_get_download_secret(): string {
+    // Use dedicated secret if available, otherwise fall back to AUTH_KEY
+    if (defined('PEANUT_DOWNLOAD_SECRET') && !empty(PEANUT_DOWNLOAD_SECRET)) {
+        return PEANUT_DOWNLOAD_SECRET;
+    }
 
-    // Valid plugins
-    $valid_plugins = ['peanut-suite', 'formflow', 'peanut-booker'];
+    // Fall back to WordPress AUTH_KEY
+    if (defined('AUTH_KEY') && AUTH_KEY !== 'put your unique phrase here') {
+        return AUTH_KEY;
+    }
+
+    // Last resort: use a site-specific fallback (not ideal but better than nothing)
+    // This requires WordPress to be partially loaded
+    if (function_exists('get_site_url')) {
+        return 'peanut_dl_' . md5(get_site_url() . ABSPATH);
+    }
+
+    return 'peanut_download_fallback_key';
+}
+
+/**
+ * Generate a secure download token.
+ *
+ * @param string $plugin Plugin slug.
+ * @param string $license License key (optional).
+ * @param int $expires Expiration timestamp.
+ * @return string The signed token.
+ */
+function peanut_generate_download_token(string $plugin, string $license = '', int $expires = 0): string {
+    if ($expires === 0) {
+        $expires = time() + HOUR_IN_SECONDS; // 1 hour validity
+    }
+
+    $data = $plugin . '|' . $expires . '|' . $license;
+    $signature = hash_hmac('sha256', $data, peanut_get_download_secret());
+
+    return base64_encode($expires . '|' . $signature);
+}
+
+/**
+ * Verify a download token.
+ *
+ * @param string $plugin Plugin slug.
+ * @param string $token The token to verify.
+ * @param string $license License key (optional).
+ * @return bool True if valid, false otherwise.
+ */
+function peanut_verify_download_token(string $plugin, string $token, string $license = ''): bool {
+    $decoded = base64_decode($token, true);
+    if ($decoded === false) {
+        return false;
+    }
+
+    $parts = explode('|', $decoded, 2);
+    if (count($parts) !== 2) {
+        return false;
+    }
+
+    [$expires, $provided_signature] = $parts;
+
+    // Check expiration
+    if (!is_numeric($expires) || (int) $expires < time()) {
+        return false;
+    }
+
+    // Regenerate signature and compare
+    $data = $plugin . '|' . $expires . '|' . $license;
+    $expected_signature = hash_hmac('sha256', $data, peanut_get_download_secret());
+
+    return hash_equals($expected_signature, $provided_signature);
+}
+
+function peanut_serve_plugin_download(): void {
+    // SECURITY: Sanitize plugin slug - only allow alphanumeric and hyphens
+    $plugin = isset($_GET['plugin']) ? preg_replace('/[^a-z0-9-]/', '', strtolower($_GET['plugin'])) : 'peanut-suite';
+    $token = isset($_GET['token']) ? sanitize_text_field($_GET['token']) : '';
+    $license = isset($_GET['license']) ? sanitize_text_field($_GET['license']) : '';
+
+    // Valid plugins whitelist
+    $valid_plugins = ['peanut-suite', 'formflow', 'peanut-booker', 'peanut-connect', 'peanut-webcomic-engine'];
     if (!in_array($plugin, $valid_plugins, true)) {
+        // Log suspicious request
+        error_log(sprintf(
+            'Peanut License Server SECURITY: Invalid plugin download attempt. Plugin: %s, IP: %s',
+            $plugin,
+            sanitize_text_field($_SERVER['REMOTE_ADDR'] ?? 'unknown')
+        ));
         status_header(400);
         wp_die('Unknown plugin.', 400);
+    }
+
+    // SECURITY: Verify download token
+    if (empty($token) || !peanut_verify_download_token($plugin, $token, $license)) {
+        // Log unauthorized download attempt
+        error_log(sprintf(
+            'Peanut License Server SECURITY: Unauthorized download attempt. Plugin: %s, IP: %s, Token: %s',
+            $plugin,
+            sanitize_text_field($_SERVER['REMOTE_ADDR'] ?? 'unknown'),
+            empty($token) ? 'missing' : 'invalid'
+        ));
+        status_header(403);
+        wp_die('Unauthorized. Please use a valid download link.', 403);
     }
 
     // Find the download file
@@ -69,12 +172,35 @@ function peanut_serve_plugin_download(): void {
         wp_die('Download file not found.', 404);
     }
 
+    // SECURITY: Verify file is within expected directories (path traversal prevention)
+    $real_file = realpath($file);
+    $real_base = realpath($upload_dir['basedir']);
+    $real_releases = realpath(PEANUT_LICENSE_SERVER_PATH . 'releases');
+
+    $is_valid_path = false;
+    if ($real_file && $real_base && strpos($real_file, $real_base) === 0) {
+        $is_valid_path = true;
+    }
+    if ($real_file && $real_releases && strpos($real_file, $real_releases) === 0) {
+        $is_valid_path = true;
+    }
+
+    if (!$is_valid_path) {
+        error_log(sprintf(
+            'Peanut License Server SECURITY: Path traversal attempt blocked. File: %s, IP: %s',
+            $file,
+            sanitize_text_field($_SERVER['REMOTE_ADDR'] ?? 'unknown')
+        ));
+        status_header(403);
+        wp_die('Access denied.', 403);
+    }
+
     // Clean ALL output buffers
     while (ob_get_level()) {
         ob_end_clean();
     }
 
-    // Send download headers
+    // Send download headers with security headers
     header('HTTP/1.1 200 OK');
     header('Content-Type: application/zip');
     header('Content-Disposition: attachment; filename="' . basename($file) . '"');
@@ -83,6 +209,8 @@ function peanut_serve_plugin_download(): void {
     header('Cache-Control: no-cache, no-store, must-revalidate');
     header('Pragma: no-cache');
     header('Expires: 0');
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: DENY');
 
     // Output file and exit immediately
     readfile($file);

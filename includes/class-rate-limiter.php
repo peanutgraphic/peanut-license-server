@@ -31,6 +31,14 @@ class Peanut_Rate_Limiter {
             'requests' => 5,
             'window' => 300, // 5 downloads per 5 minutes
         ],
+        'site_health' => [
+            'requests' => 10,
+            'window' => 60, // 10 health reports per minute (daily reports expected)
+        ],
+        'license_activations' => [
+            'requests' => 20,
+            'window' => 60, // 20 lookups per minute (prevents enumeration)
+        ],
         'default' => [
             'requests' => 60,
             'window' => 60, // 60 requests per minute

@@ -538,6 +538,44 @@ class Peanut_License_Manager {
     }
 
     /**
+     * Get activation by site URL for a license.
+     * Uses direct database query instead of iterating through all activations.
+     *
+     * @param int $license_id License ID.
+     * @param string $site_url Site URL to check.
+     * @param bool $active_only Only return active activations.
+     * @return object|null Activation record or null.
+     */
+    public static function get_activation_by_site(int $license_id, string $site_url, bool $active_only = true): ?object {
+        global $wpdb;
+
+        $site_hash = md5(untrailingslashit(esc_url_raw($site_url)));
+
+        $sql = "SELECT * FROM " . self::get_activations_table() . " WHERE license_id = %d AND site_hash = %s";
+
+        if ($active_only) {
+            $sql .= " AND is_active = 1";
+        }
+
+        return $wpdb->get_row($wpdb->prepare($sql, $license_id, $site_hash));
+    }
+
+    /**
+     * Count active activations for a license using database query.
+     *
+     * @param int $license_id License ID.
+     * @return int Number of active activations.
+     */
+    public static function count_active_activations(int $license_id): int {
+        global $wpdb;
+
+        return (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM " . self::get_activations_table() . " WHERE license_id = %d AND is_active = 1",
+            $license_id
+        ));
+    }
+
+    /**
      * Add site activation
      */
     public static function add_activation(int $license_id, array $data): ?object {

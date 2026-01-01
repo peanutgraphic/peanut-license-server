@@ -60,26 +60,27 @@ class Peanut_License_Validator {
             return $status_check;
         }
 
-        // Check if this site is already activated
-        $site_hash = md5(untrailingslashit(esc_url_raw($site_data['site_url'])));
-        $existing_activation = null;
+        // OPTIMIZED: Check if this site is already activated using direct database query
+        // This avoids loading all activations and iterating in PHP (N+1 query fix)
+        $existing_activation = Peanut_License_Manager::get_activation_by_site(
+            $license->id,
+            $site_data['site_url'],
+            true // active only
+        );
 
-        foreach ($license->activations as $activation) {
-            if ($activation->site_hash === $site_hash && $activation->is_active) {
-                $existing_activation = $activation;
-                break;
+        // If not already activated, check activation limit using database count
+        if (!$existing_activation) {
+            $active_count = Peanut_License_Manager::count_active_activations($license->id);
+
+            if ($active_count >= (int) $license->max_activations) {
+                return $this->error_response(
+                    self::ERROR_ACTIVATION_LIMIT,
+                    sprintf(
+                        __('Maximum activations (%d) reached. Please deactivate another site first.', 'peanut-license-server'),
+                        $license->max_activations
+                    )
+                );
             }
-        }
-
-        // If not already activated, check activation limit
-        if (!$existing_activation && !Peanut_License_Manager::can_activate($license)) {
-            return $this->error_response(
-                self::ERROR_ACTIVATION_LIMIT,
-                sprintf(
-                    __('Maximum activations (%d) reached. Please deactivate another site first.', 'peanut-license-server'),
-                    $license->max_activations
-                )
-            );
         }
 
         // Add or update activation

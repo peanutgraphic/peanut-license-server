@@ -467,6 +467,13 @@ class Peanut_API_Endpoints {
      * Report site health from a client installation.
      */
     public function report_site_health(WP_REST_Request $request): WP_REST_Response {
+        // SECURITY: Check rate limit for health reports
+        $rate_limited = Peanut_Rate_Limiter::check('site_health');
+        if ($rate_limited) {
+            return $rate_limited;
+        }
+        Peanut_Rate_Limiter::record_request('site_health');
+
         global $wpdb;
 
         $license_key = $request->get_param('license_key');
@@ -548,31 +555,60 @@ class Peanut_API_Endpoints {
      * Get all activations for a license.
      */
     public function get_license_activations(WP_REST_Request $request): WP_REST_Response {
+        // SECURITY: Check rate limit for activation lookups
+        $rate_limited = Peanut_Rate_Limiter::check('license_activations');
+        if ($rate_limited) {
+            return $rate_limited;
+        }
+        Peanut_Rate_Limiter::record_request('license_activations');
+
         global $wpdb;
 
         $license_key = $request->get_param('license_key');
 
         // Validate the license key format first
         if (!Peanut_License_Validator::is_valid_format($license_key)) {
-            return new WP_REST_Response([
+            // Log potential enumeration attempt
+            Peanut_Validation_Logger::log_failure(
+                $license_key,
+                '',
+                'invalid_format',
+                'Invalid license key format in activations lookup',
+                'activations_lookup'
+            );
+
+            $response = new WP_REST_Response([
                 'success' => false,
                 'error' => 'invalid_format',
                 'message' => __('Invalid license key format.', 'peanut-license-server'),
             ], 400);
+
+            return Peanut_Rate_Limiter::add_headers($response, 'license_activations');
         }
 
         // Get the license from the database
         $license = Peanut_License_Manager::get_by_key($license_key);
 
         if (!$license) {
-            return new WP_REST_Response([
+            // Log invalid license lookup (potential enumeration)
+            Peanut_Validation_Logger::log_failure(
+                $license_key,
+                '',
+                'invalid_license',
+                'Invalid license key in activations lookup',
+                'activations_lookup'
+            );
+
+            $response = new WP_REST_Response([
                 'success' => false,
                 'error' => 'invalid_license',
                 'message' => __('Invalid license key.', 'peanut-license-server'),
             ], 400);
+
+            return Peanut_Rate_Limiter::add_headers($response, 'license_activations');
         }
 
-        // Get all activations.
+        // Get all activations with a single query including active count
         $activations = $wpdb->get_results($wpdb->prepare(
             "SELECT site_url, site_name, plugin_version, wp_version, php_version,
                     health_status, activated_at, last_checked, is_active
@@ -582,6 +618,7 @@ class Peanut_API_Endpoints {
             $license->id
         ));
 
+        // Count active activations in the query result
         $active_count = 0;
         foreach ($activations as $activation) {
             if ($activation->is_active) {
@@ -589,7 +626,7 @@ class Peanut_API_Endpoints {
             }
         }
 
-        return new WP_REST_Response([
+        $response = new WP_REST_Response([
             'success' => true,
             'license' => [
                 'status' => $license->status,
@@ -604,5 +641,7 @@ class Peanut_API_Endpoints {
                 'sites' => $activations,
             ],
         ], 200);
+
+        return Peanut_Rate_Limiter::add_headers($response, 'license_activations');
     }
 }

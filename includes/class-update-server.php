@@ -166,20 +166,68 @@ class Peanut_Update_Server {
 
     /**
      * Get download URL
-     * Uses configured URL from settings, or falls back to uploads directory
+     * Returns a signed URL for secure downloads
+     *
+     * @param string|null $license_key Optional license key for the download.
+     * @return string Signed download URL.
      */
     public function get_download_url(?string $license_key = null): string {
         $slug = $this->product_slug;
 
-        // Check for custom download URL in settings
+        // Check for custom download URL in settings (external CDN, etc.)
         $custom_url = get_option("peanut_{$slug}_download_url", '');
         if (!empty($custom_url)) {
             return $custom_url;
         }
 
-        // Default: point to uploads directory
-        $upload_dir = wp_upload_dir();
-        return $upload_dir['baseurl'] . "/{$slug}/{$slug}.zip";
+        // Generate signed download URL for security
+        return $this->get_signed_download_url($license_key);
+    }
+
+    /**
+     * Get a signed download URL with expiring token.
+     *
+     * @param string|null $license_key Optional license key.
+     * @param int $expires_in Seconds until token expires (default 1 hour).
+     * @return string Signed download URL.
+     */
+    public function get_signed_download_url(?string $license_key = null, int $expires_in = 3600): string {
+        $slug = $this->product_slug;
+
+        // Generate secure token
+        $token = peanut_generate_download_token($slug, $license_key ?? '', time() + $expires_in);
+
+        // Build URL with signed parameters
+        $params = [
+            'peanut_download' => '1',
+            'plugin' => $slug,
+            'token' => $token,
+        ];
+
+        if ($license_key) {
+            $params['license'] = $license_key;
+        }
+
+        return add_query_arg($params, home_url('/'));
+    }
+
+    /**
+     * Get AJAX download URL (alternative to signed direct URL).
+     *
+     * @param string|null $license_key Optional license key.
+     * @return string AJAX download URL.
+     */
+    public function get_ajax_download_url(?string $license_key = null): string {
+        $params = [
+            'action' => 'peanut_download_plugin',
+            'plugin' => $this->product_slug,
+        ];
+
+        if ($license_key) {
+            $params['license'] = $license_key;
+        }
+
+        return add_query_arg($params, admin_url('admin-ajax.php'));
     }
 
     /**
