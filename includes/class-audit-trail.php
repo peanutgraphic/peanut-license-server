@@ -126,7 +126,7 @@ class Peanut_Audit_Trail {
     /**
      * Log license status change
      */
-    public static function log_status_change(int $license_id, string $old_status, string $new_status, string $event = null): int {
+    public static function log_status_change(int $license_id, string $old_status, string $new_status, ?string $event = null): int {
         $event = $event ?: self::EVENT_LICENSE_UPDATED;
 
         // Map status changes to specific events

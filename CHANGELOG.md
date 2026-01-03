@@ -5,6 +5,29 @@ All notable changes to Peanut License Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.2] - 2026-01-03
+
+### Added
+- Centralized `Peanut_Logger` class for consistent logging across the plugin
+- Log levels: DEBUG, INFO, WARNING, ERROR with configurable minimum level
+- Sensitive data filtering in logs (passwords, tokens, keys automatically redacted)
+- License key masking in log output
+- Specialized logging methods: `license()` for license events, `api()` for API requests
+- WordPress filter `peanut_license_log_level` to customize minimum log level
+- Action hook `peanut_license_log` for custom log handlers
+
+### Changed
+- Extracted WooCommerce Customer Portal CSS to separate file (`assets/css/woocommerce-portal.css`)
+- Reduced `class-woocommerce-integration.php` from 568 to 346 lines (39% reduction)
+- Migrated all `error_log()` calls to use `Peanut_Logger` for consistent formatting
+- Improved log context with structured data instead of string concatenation
+
+## [1.3.1] - 2025-12-28
+
+### Fixed
+- Fixed translation loading deprecation warning for WordPress 6.7+ (moved to `init` hook)
+- Updated text domain loading to follow WordPress best practices
+
 ## [1.3.0] - 2025-12-26
 
 ### Added

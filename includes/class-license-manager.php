@@ -156,7 +156,7 @@ class Peanut_License_Manager {
         );
 
         if ($result === false) {
-            error_log('Peanut License Server: Failed to create license - ' . $wpdb->last_error);
+            Peanut_Logger::error('Failed to create license', ['db_error' => $wpdb->last_error]);
             return null;
         }
 
@@ -349,6 +349,11 @@ class Peanut_License_Manager {
             ['%d']
         );
 
+        // Invalidate cache on successful update
+        if ($result !== false) {
+            Peanut_License_Validator::invalidate_cache_by_id($id);
+        }
+
         return $result !== false;
     }
 
@@ -357,6 +362,9 @@ class Peanut_License_Manager {
      */
     public static function delete(int $id): bool {
         global $wpdb;
+
+        // Invalidate cache before deletion
+        Peanut_License_Validator::invalidate_cache_by_id($id);
 
         // Delete activations first
         $wpdb->delete(self::get_activations_table(), ['license_id' => $id], ['%d']);
@@ -417,7 +425,10 @@ class Peanut_License_Manager {
         );
 
         if ($result === false) {
-            error_log('Peanut License Server: Failed to regenerate license key - ' . $wpdb->last_error);
+            Peanut_Logger::error('Failed to regenerate license key', [
+                'license_id' => $id,
+                'db_error' => $wpdb->last_error,
+            ]);
             return null;
         }
 
@@ -469,7 +480,10 @@ class Peanut_License_Manager {
         );
 
         if ($result === false) {
-            error_log('Peanut License Server: Failed to transfer license - ' . $wpdb->last_error);
+            Peanut_Logger::error('Failed to transfer license', [
+                'license_id' => $id,
+                'db_error' => $wpdb->last_error,
+            ]);
             return null;
         }
 
@@ -641,6 +655,9 @@ class Peanut_License_Manager {
             return null;
         }
 
+        // Invalidate cache when activation added
+        Peanut_License_Validator::invalidate_cache_by_id($license_id);
+
         return $wpdb->get_row(
             $wpdb->prepare("SELECT * FROM " . self::get_activations_table() . " WHERE id = %d", $wpdb->insert_id)
         );
@@ -668,6 +685,11 @@ class Peanut_License_Manager {
             ['%d', '%s']
         );
 
+        // Invalidate cache when activation removed
+        if ($result !== false) {
+            Peanut_License_Validator::invalidate_cache_by_id($license_id);
+        }
+
         return $result !== false;
     }
 
@@ -676,6 +698,12 @@ class Peanut_License_Manager {
      */
     public static function deactivate_site(int $activation_id): bool {
         global $wpdb;
+
+        // Get license ID before deactivating
+        $activation = $wpdb->get_row($wpdb->prepare(
+            "SELECT license_id FROM " . self::get_activations_table() . " WHERE id = %d",
+            $activation_id
+        ));
 
         $result = $wpdb->update(
             self::get_activations_table(),
@@ -687,6 +715,11 @@ class Peanut_License_Manager {
             ['%d', '%s'],
             ['%d']
         );
+
+        // Invalidate cache when site deactivated
+        if ($result !== false && $activation) {
+            Peanut_License_Validator::invalidate_cache_by_id($activation->license_id);
+        }
 
         return $result !== false;
     }

@@ -108,7 +108,7 @@ class Peanut_Validation_Logger {
     /**
      * Check if IP is suspicious (many failed attempts)
      */
-    public static function is_suspicious_ip(string $ip = null, int $threshold = 10, int $minutes = 60): bool {
+    public static function is_suspicious_ip(?string $ip = null, int $threshold = 10, int $minutes = 60): bool {
         $ip = $ip ?: self::get_client_ip();
         return self::get_failed_attempts_by_ip($ip, $minutes) >= $threshold;
     }

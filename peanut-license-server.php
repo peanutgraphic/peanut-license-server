@@ -249,6 +249,9 @@ final class Peanut_License_Server {
      * Load required files
      */
     private function load_dependencies(): void {
+        // Logger (load first so other classes can use it)
+        require_once PEANUT_LICENSE_SERVER_PATH . 'includes/class-logger.php';
+
         // Core classes
         require_once PEANUT_LICENSE_SERVER_PATH . 'includes/class-license-manager.php';
         require_once PEANUT_LICENSE_SERVER_PATH . 'includes/class-license-validator.php';

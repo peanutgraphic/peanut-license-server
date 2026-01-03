@@ -2,183 +2,128 @@
 
 License management, validation, and update server for Peanut Suite WordPress plugins.
 
-## Description
+## Overview
 
-Peanut License Server provides a complete license management solution for WordPress plugins. It handles license validation, site activations, automatic updates, and integrates with WooCommerce Subscriptions for automated license provisioning.
+Peanut License Server is the central backend for the entire Peanut ecosystem. It provides:
 
-## Features
-
-### License Management
-- Generate and manage license keys with Free, Pro, and Agency tiers
-- Track activations per license with configurable limits
-- Suspend, expire, or revoke licenses
-- Transfer licenses between customers
-- Batch operations for bulk license management
-
-### API & Validation
-- RESTful API for license validation
-- Site activation/deactivation endpoints
-- Rate limiting for API protection
-- Validation logging and analytics
-
-### Update Server
-- Serve plugin updates to licensed sites
-- Version-based update delivery
-- Changelog and requirements management
-- Download tracking
-
-### WooCommerce Integration
-- Automatic license creation on subscription purchase
-- License tier mapping to product variations
-- Webhook notifications for subscription events
-- Subscription status sync
-
-### Security
-- Audit trail for all license operations
-- Security event logging
-- GDPR compliance tools (export, anonymize, delete)
-- Rate limiting and IP monitoring
-
-### Analytics
-- License growth tracking
-- Activation trends
-- API usage statistics
-- Site health monitoring
+- License generation and management
+- Site activation/deactivation tracking
+- Automatic plugin update distribution
+- WooCommerce integration for e-commerce
+- Security features and audit trails
+- Customer analytics and reporting
 
 ## Requirements
 
 - WordPress 6.0+
 - PHP 8.0+
-- WooCommerce (optional, for e-commerce integration)
-- WooCommerce Subscriptions (optional, for subscription management)
+- MySQL 5.7+ or MariaDB 10.3+
+- WooCommerce (optional, for e-commerce features)
+- WooCommerce Subscriptions (optional, for recurring licenses)
+
+## Supported Products
+
+- Peanut Suite
+- FormFlow Pro
+- Peanut Booker
 
 ## Installation
 
 1. Upload the `peanut-license-server` folder to `/wp-content/plugins/`
 2. Activate the plugin through the WordPress admin
-3. Navigate to **Licenses** in the admin menu to configure
-
-## Configuration
-
-### API Settings
-Configure API and update server settings under **Licenses > Settings**:
-- Enable/disable license validation API
-- Enable/disable plugin update server
-- Set cache duration for client validation results
-
-### Product Settings
-For each product, configure:
-- Current version number
-- WordPress and PHP requirements
-- Changelog entries
-- Update ZIP file location
-
-## API Endpoints
-
-### License Validation
-```
-POST /wp-json/peanut-api/v1/license/validate
-```
-
-### Site Activation
-```
-POST /wp-json/peanut-api/v1/license/activate
-```
-
-### Site Deactivation
-```
-POST /wp-json/peanut-api/v1/license/deactivate
-```
-
-### Update Check
-```
-GET /wp-json/peanut-api/v1/updates/check?plugin=PLUGIN_SLUG
-```
-
-## Client SDK
-
-Include the SDK in your plugin to integrate with the license server:
-
-```php
-require_once 'path/to/class-peanut-license-client.php';
-
-$client = new Peanut_License_Client([
-    'server_url' => 'https://your-site.com',
-    'plugin_slug' => 'your-plugin',
-]);
-
-$result = $client->validate_license($license_key);
-```
+3. Navigate to **Peanut Licenses** in the admin menu
+4. Configure your license tiers and settings
 
 ## License Tiers
 
-| Tier | Max Activations | Typical Use |
-|------|-----------------|-------------|
-| Free | 1 | Personal/testing |
-| Pro | 3 | Small business |
-| Agency | 25 | Agencies/developers |
+| Tier | Activations | Features |
+|------|-------------|----------|
+| Free | 1 | Basic modules |
+| Pro | 3 | + Advanced features |
+| Agency | 25 | + Monitor, invoicing, white-label |
 
-## Frontend Development
+## REST API Endpoints
 
-The admin interface uses a modern React SPA built with Vite.
+The plugin exposes REST API endpoints at `/wp-json/peanut-api/v1/`:
 
-### Directory Structure
-```
-frontend/
-├── src/
-│   ├── components/     # Reusable UI components
-│   │   ├── common/     # Buttons, cards, modals, etc.
-│   │   └── layout/     # Sidebar, header, layout
-│   ├── pages/          # Route pages
-│   ├── api/            # API client and endpoints
-│   ├── contexts/       # React contexts (theme, etc.)
-│   ├── types/          # TypeScript type definitions
-│   └── utils/          # Utility functions
-├── package.json
-└── vite.config.ts
-```
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/license/validate` | POST | Validate a license key |
+| `/license/activate` | POST | Activate license on a site |
+| `/license/deactivate` | POST | Deactivate license from a site |
+| `/updates/{plugin}/{version}` | GET | Check for plugin updates |
 
-### Tech Stack
-- React 19 + TypeScript
-- Vite 6 for build tooling
-- Tailwind CSS 4.0 for styling
-- React Query for data fetching
-- React Router for navigation
-- Recharts for analytics charts
-- Lucide for icons
+## WooCommerce Integration
 
-### Development
+When WooCommerce is active, the plugin:
+
+- Automatically generates licenses on order completion
+- Manages license status with subscription changes
+- Provides a customer portal for license management
+- Syncs with WooCommerce Subscriptions for renewals
+
+## Security Features
+
+- Rate limiting on API endpoints
+- IP-based validation and blocking
+- Domain verification
+- Hardware fingerprinting (optional)
+- Comprehensive audit logging
+
+## CLI Commands
+
 ```bash
-cd frontend
-npm install
-npm run dev
+# List all licenses
+wp peanut-license list
+
+# Generate a new license
+wp peanut-license generate --tier=pro --email=customer@example.com
+
+# Validate a license
+wp peanut-license validate --key=XXXX-XXXX-XXXX-XXXX
+
+# Revoke a license
+wp peanut-license revoke --key=XXXX-XXXX-XXXX-XXXX
 ```
 
-### Building for Production
-```bash
-npm run build
-```
-Build output goes to `assets/dist/` for WordPress integration.
+## File Structure
 
-### Pages
-- **Dashboard** - License statistics, quick actions, recent activity
-- **Licenses** - License management with CRUD operations
-- **Analytics** - Validation charts, tier distribution, error analysis
-- **Audit Trail** - Complete action log with filters
-- **Webhooks** - Configure webhook integrations
-- **Products** - Plugin update management
-- **GDPR Tools** - Data export, anonymize, delete
-- **Security** - IP blocking, rate limits, security events
-- **Settings** - API and server configuration
+```
+peanut-license-server/
+├── peanut-license-server.php    # Main plugin file
+├── includes/                     # Core functionality
+│   ├── class-license-manager.php
+│   ├── class-license-validator.php
+│   ├── class-api-endpoints.php
+│   ├── class-update-server.php
+│   └── ...
+├── admin/                        # Admin interface
+├── frontend/                     # React SPA admin
+└── assets/                       # CSS and JavaScript
+```
+
+## Documentation
+
+For complete technical documentation, see:
+`/DOCUMENTATION/PEANUT-LICENSE-SERVER-DOCUMENTATION.md`
 
 ## Changelog
 
-See [CHANGELOG.md](CHANGELOG.md) for version history.
+### 1.3.1 (2025-12-28)
+- Fixed translation loading warning for WordPress 6.7+
 
-## Support
+### 1.3.0 (2025-12-27)
+- Added React SPA admin interface with 11 pages
+- Added analytics dashboard
 
-For support, please visit [Peanut Graphic](https://peanutgraphic.com).
+### 1.2.0 (2025-12-20)
+- Added admin authentication to API endpoints
+- Improved security features
 
 ## License
 
 GPL-2.0-or-later
+
+## Author
+
+[Peanut Graphic](https://peanutgraphic.com)

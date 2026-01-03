@@ -201,6 +201,7 @@ class Peanut_API_Endpoints {
         ]);
 
         // Get all activations for a license (for admin dashboard view)
+        // Requires WordPress admin authentication since it exposes all activation data
         register_rest_route(self::NAMESPACE, '/license/activations', [
             'methods' => WP_REST_Server::READABLE,
             'callback' => [$this, 'get_license_activations'],
@@ -549,6 +550,32 @@ class Peanut_API_Endpoints {
             'message' => __('Health status updated.', 'peanut-license-server'),
             'next_report' => current_time('timestamp') + DAY_IN_SECONDS,
         ], 200);
+    }
+
+    /**
+     * Check admin permissions for sensitive endpoints
+     *
+     * @param WP_REST_Request $request The request object
+     * @return bool|WP_Error True if allowed, error otherwise
+     */
+    public function admin_permission_check(WP_REST_Request $request) {
+        if (!is_user_logged_in()) {
+            return new WP_Error(
+                'rest_not_logged_in',
+                __('You must be logged in to access this endpoint.', 'peanut-license-server'),
+                ['status' => 401]
+            );
+        }
+
+        if (!current_user_can('manage_options')) {
+            return new WP_Error(
+                'rest_forbidden',
+                __('You do not have permission to access this endpoint.', 'peanut-license-server'),
+                ['status' => 403]
+            );
+        }
+
+        return true;
     }
 
     /**

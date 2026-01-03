@@ -1,42 +1,27 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.5/phpunit.xsd"
-         bootstrap="tests/bootstrap.php"
-         colors="true"
-         cacheDirectory=".phpunit.cache"
-         executionOrder="depends,defects"
-         failOnWarning="true"
-         failOnRisky="true"
-         beStrictAboutOutputDuringTests="true">
-
-    <testsuites>
-        <testsuite name="Unit">
-            <directory>tests/Unit</directory>
-        </testsuite>
-        <testsuite name="Integration">
-            <directory>tests/Integration</directory>
-        </testsuite>
-    </testsuites>
-
-    <source>
-        <include>
-            <directory suffix=".php">includes</directory>
-        </include>
-        <exclude>
-            <file>includes/class-cli-commands.php</file>
-        </exclude>
-    </source>
-
-    <coverage>
-        <report>
-            <html outputDirectory="coverage"/>
-            <text outputFile="php://stdout" showOnlySummary="true"/>
-        </report>
-    </coverage>
-
-    <php>
-        <const name="ABSPATH" value="/tmp/wordpress/"/>
-        <const name="WPINC" value="wp-includes"/>
-        <env name="WP_TESTS_DOMAIN" value="example.org"/>
-    </php>
+<?xml version="1.0"?>
+<phpunit
+	bootstrap="tests/bootstrap.php"
+	backupGlobals="false"
+	colors="true"
+	convertErrorsToExceptions="true"
+	convertNoticesToExceptions="true"
+	convertWarningsToExceptions="true"
+>
+	<testsuites>
+		<testsuite name="Peanut License Server Test Suite">
+			<directory prefix="test-" suffix=".php">./tests/</directory>
+		</testsuite>
+	</testsuites>
+	<filter>
+		<whitelist processUncoveredFilesFromWhitelist="true">
+			<directory suffix=".php">./includes/</directory>
+			<exclude>
+				<directory suffix=".php">./vendor/</directory>
+				<directory suffix=".php">./node_modules/</directory>
+			</exclude>
+		</whitelist>
+	</filter>
+	<php>
+		<const name="PEANUT_LICENSE_TEST_MODE" value="true"/>
+	</php>
 </phpunit>

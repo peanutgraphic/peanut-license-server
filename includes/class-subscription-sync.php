@@ -485,11 +485,10 @@ class Peanut_Subscription_Sync {
         }
 
         // Log the sync
-        error_log(sprintf(
-            'Peanut License Server: Subscription sync completed. %d licenses synced, %d errors.',
-            $synced,
-            $errors
-        ));
+        Peanut_Logger::info('Subscription sync completed', [
+            'licenses_synced' => $synced,
+            'errors' => $errors,
+        ]);
     }
 
     /**

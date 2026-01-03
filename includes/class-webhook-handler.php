@@ -23,14 +23,14 @@ class Peanut_Webhook_Handler {
         $order = wc_get_order($order_id);
 
         if (!$order) {
-            error_log("Peanut License Server: Order {$order_id} not found");
+            Peanut_Logger::warning('Order not found', ['order_id' => $order_id]);
             return;
         }
 
         // Check if license already generated for this order
         $existing_license = $this->get_license_by_order($order_id);
         if ($existing_license) {
-            error_log("Peanut License Server: License already exists for order {$order_id}");
+            Peanut_Logger::debug('License already exists for order', ['order_id' => $order_id]);
             return;
         }
 

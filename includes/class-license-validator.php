@@ -23,6 +23,11 @@ class Peanut_License_Validator {
     public const ERROR_SERVER = 'server_error';
 
     /**
+     * Cache TTL in seconds (5 minutes)
+     */
+    private const CACHE_TTL = 300;
+
+    /**
      * Last error
      */
     private string $last_error = '';
@@ -100,24 +105,79 @@ class Peanut_License_Validator {
     }
 
     /**
-     * Validate license without activating
+     * Validate license without activating (with caching)
      */
     public function validate_only(string $license_key): array {
+        // Check cache first
+        $cache_key = self::get_cache_key($license_key);
+        $cached = get_transient($cache_key);
+
+        if ($cached !== false) {
+            Peanut_Logger::debug('License validation cache hit', [
+                'cache_key' => $cache_key,
+            ]);
+            return $cached;
+        }
+
         $license = Peanut_License_Manager::get_by_key($license_key);
 
         if (!$license) {
-            return $this->error_response(
+            $result = $this->error_response(
                 self::ERROR_INVALID_KEY,
                 __('Invalid license key.', 'peanut-license-server')
             );
+            // Cache invalid key responses briefly (1 minute) to prevent brute force
+            set_transient($cache_key, $result, 60);
+            return $result;
         }
 
         $status_check = $this->check_license_status($license);
         if (!$status_check['success']) {
+            // Cache error responses for shorter time (2 minutes)
+            set_transient($cache_key, $status_check, 120);
             return $status_check;
         }
 
-        return $this->success_response($license);
+        $result = $this->success_response($license);
+
+        // Cache successful validations
+        set_transient($cache_key, $result, self::CACHE_TTL);
+
+        Peanut_Logger::debug('License validation cached', [
+            'license_id' => $license->id,
+            'ttl' => self::CACHE_TTL,
+        ]);
+
+        return $result;
+    }
+
+    /**
+     * Get cache key for license validation
+     */
+    public static function get_cache_key(string $license_key): string {
+        return 'peanut_lic_' . md5($license_key);
+    }
+
+    /**
+     * Invalidate cache for a license
+     */
+    public static function invalidate_cache(string $license_key): void {
+        $cache_key = self::get_cache_key($license_key);
+        delete_transient($cache_key);
+
+        Peanut_Logger::debug('License cache invalidated', [
+            'cache_key' => $cache_key,
+        ]);
+    }
+
+    /**
+     * Invalidate cache by license ID
+     */
+    public static function invalidate_cache_by_id(int $license_id): void {
+        $license = Peanut_License_Manager::get_by_id($license_id);
+        if ($license && !empty($license->license_key)) {
+            self::invalidate_cache($license->license_key);
+        }
     }
 
     /**
