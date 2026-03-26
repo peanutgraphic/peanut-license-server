@@ -71,7 +71,7 @@ export function Layout({ title, description, action, children }: LayoutProps) {
       </header>
 
       {/* Main Content */}
-      <main className="p-6 overflow-x-hidden">
+      <main id="main-content" tabIndex={-1} className="p-6 overflow-x-hidden">
         {children}
       </main>
     </div>

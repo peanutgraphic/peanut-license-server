@@ -493,6 +493,11 @@ final class Peanut_License_Server {
      * URL: /wp-admin/admin-ajax.php?action=peanut_download_plugin&plugin=peanut-suite
      */
     public function handle_ajax_download(): void {
+        // Verify nonce for security
+        if ( ! isset( $_REQUEST['_wpnonce'] ) || ! wp_verify_nonce( $_REQUEST['_wpnonce'], 'peanut_download_plugin' ) ) {
+            wp_die( __( 'Security check failed', 'peanut-license-server' ) );
+        }
+
         $plugin = isset($_GET['plugin']) ? sanitize_text_field($_GET['plugin']) : 'peanut-suite';
         $license_key = isset($_GET['license']) ? sanitize_text_field($_GET['license']) : null;
 

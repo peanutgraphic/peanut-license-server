@@ -6,6 +6,23 @@
  * Usage: /wp-content/plugins/peanut-license-server/download.php?plugin=peanut-suite
  */
 
+// Security: Load WordPress and require authentication
+if (!defined('ABSPATH')) {
+    // Find WordPress root (go up from plugin directory)
+    $wp_root = dirname(dirname(dirname(dirname(__FILE__))));
+    require_once $wp_root . '/wp-load.php';
+}
+
+// Require user to be logged in
+if (!is_user_logged_in()) {
+    wp_die('Unauthorized access.', 'Unauthorized', array('response' => 403));
+}
+
+// Require manage_options capability
+if (!current_user_can('manage_options')) {
+    wp_die('Insufficient permissions to download plugins.', 'Forbidden', array('response' => 403));
+}
+
 // Prevent any output
 error_reporting(0);
 ini_set('display_errors', 0);
@@ -21,9 +38,8 @@ if (!in_array($plugin, $valid_plugins, true)) {
     die('Invalid plugin');
 }
 
-// Find WordPress root (go up from plugin directory)
-$wp_root = dirname(dirname(dirname(dirname(__FILE__))));
-$upload_base = $wp_root . '/wp-content/uploads/' . $plugin . '/';
+// Define upload base (WordPress already loaded)
+$upload_base = WP_CONTENT_DIR . '/uploads/' . $plugin . '/';
 $releases_dir = dirname(__FILE__) . '/releases/';
 
 $file = null;
