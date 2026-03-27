@@ -276,6 +276,9 @@ final class Peanut_License_Server {
         // GDPR compliance
         require_once PEANUT_LICENSE_SERVER_PATH . 'includes/class-gdpr-compliance.php';
 
+        // ML-powered abuse detection
+        require_once PEANUT_LICENSE_SERVER_PATH . 'includes/class-ml-abuse-detector.php';
+
         // Admin REST API
         require_once PEANUT_LICENSE_SERVER_PATH . 'includes/class-admin-rest-api.php';
 
@@ -321,6 +324,9 @@ final class Peanut_License_Server {
         add_action('init', [$this, 'init']);
         add_action('rest_api_init', [$this, 'register_rest_routes']);
 
+        // ML training cron hook
+        add_action('peanut_ml_train_abuse_model', ['Peanut_ML_Abuse_Detector', 'train_model']);
+
         // Initialize webhook notifications
         Peanut_Webhook_Notifications::init();
 
@@ -344,6 +350,11 @@ final class Peanut_License_Server {
         $this->create_tables();
         $this->set_default_options();
         flush_rewrite_rules();
+
+        // Schedule ML abuse detection training if class is available
+        if (class_exists('Peanut_ML_Abuse_Detector')) {
+            Peanut_ML_Abuse_Detector::schedule_training();
+        }
     }
 
     /**
@@ -351,6 +362,11 @@ final class Peanut_License_Server {
      */
     public function deactivate(): void {
         flush_rewrite_rules();
+
+        // Unschedule ML abuse detection training if class is available
+        if (class_exists('Peanut_ML_Abuse_Detector')) {
+            Peanut_ML_Abuse_Detector::unschedule_training();
+        }
     }
 
     /**

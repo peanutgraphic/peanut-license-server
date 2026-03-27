@@ -72,6 +72,20 @@ class Peanut_API_Security {
             );
         }
 
+        // ML-powered abuse detection (gracefully degrades if service unavailable)
+        if (class_exists('Peanut_ML_Abuse_Detector')) {
+            $ml_result = Peanut_ML_Abuse_Detector::enforce(
+                $request->get_param('license_key') ?? '',
+                self::get_client_ip(),
+                isset($_SERVER['HTTP_USER_AGENT']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_USER_AGENT'])) : null,
+                $request->get_param('site_url'),
+                'validate'
+            );
+            if (is_wp_error($ml_result)) {
+                return $ml_result;
+            }
+        }
+
         return true;
     }
 
