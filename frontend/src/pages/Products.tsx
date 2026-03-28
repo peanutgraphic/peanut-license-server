@@ -150,7 +150,7 @@ export default function Products() {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Plugin</label>
-              <select className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500">
+              <select className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary-500">
                 <option value="">Select plugin...</option>
                 {mockProducts.map((p) => (
                   <option key={p.id} value={p.slug}>{p.name}</option>
@@ -175,7 +175,7 @@ export default function Products() {
                 <HelpTooltip content="Describe what's new in this version." />
               </label>
               <textarea
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 h-24 resize-none"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary-500 h-24 resize-none"
                 placeholder="What's new in this version..."
               />
             </div>
