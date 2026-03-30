@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+/* Firefox scrollbar */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f1f5f9;
+}
+
+.dark * {
+    scrollbar-color: #475569 #1e293b;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
