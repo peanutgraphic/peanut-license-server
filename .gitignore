@@ -33,3 +33,7 @@ npm-debug.log*
 
 # Claude local settings
 .claude/settings.local.json
+
+# --- added by gitignore-sync on 2026-04-13 ---
+.claude/worktrees/
+.phpunit.result.cache
