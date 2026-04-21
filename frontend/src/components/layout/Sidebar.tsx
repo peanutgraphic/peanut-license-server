@@ -25,7 +25,7 @@ const navigation = [
 
 export default function Sidebar() {
   return (
-    <aside className="w-56 bg-slate-900 min-h-screen flex flex-col">
+    <aside className="w-56 bg-slate-900 min-h-[100dvh] flex flex-col">
       {/* Logo */}
       <div className="px-4 py-5 border-b border-slate-800">
         <div className="flex items-center gap-3">
