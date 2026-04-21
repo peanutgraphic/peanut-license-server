@@ -46,7 +46,7 @@ Object.defineProperty(window, 'peanutLicenseServer', {
 });
 
 // Mock fetch
-global.fetch = vi.fn();
+globalThis.fetch = vi.fn() as typeof fetch;
 
 // Reset mocks before each test
 beforeEach(() => {
